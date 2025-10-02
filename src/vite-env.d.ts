@@ -14,3 +14,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Removed custom ImportMeta interface to avoid conflicts with Vite's type definitions.
