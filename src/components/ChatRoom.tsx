@@ -346,7 +346,9 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ roomState, onLeaveRoom }) => {
     }
 
     if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
+      localStream.getTracks().forEach(t => {
+        t.stop(); // Stop the track
+      });
       setLocalStream(null);
     }
 

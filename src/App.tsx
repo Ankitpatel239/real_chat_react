@@ -11,6 +11,14 @@ function App() {
   };
 
   const handleLeaveRoom = () => {
+    // Disconnect from camera and audio
+    const mediaTracks = navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+    mediaTracks.then((stream) => {
+      stream.getTracks().forEach((track) => track.stop());
+    }).catch((error) => {
+      console.error('Error stopping media tracks:', error);
+    });
+
     setRoomState(null);
   };
 
