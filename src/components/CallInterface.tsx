@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface CallInterfaceProps {
   localVideoRef: React.RefObject<HTMLVideoElement>;
@@ -20,16 +20,24 @@ const CallInterface: React.FC<CallInterfaceProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
 
-  // Call timer effect
+  const durationRef = useRef<NodeJS.Timeout>();
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (isCallActive) {
-      interval = setInterval(() => {
+      durationRef.current = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
+    } else {
+      setCallDuration(0);
     }
-    return () => clearInterval(interval);
+
+    return () => {
+      if (durationRef.current) {
+        clearInterval(durationRef.current);
+      }
+    };
   }, [isCallActive]);
 
   const formatTime = (seconds: number) => {
@@ -39,208 +47,287 @@ const CallInterface: React.FC<CallInterfaceProps> = ({
   };
 
   const handleMuteToggle = () => {
-    setIsMuted(!isMuted);
-    // Add actual mute logic here
+    if (localVideoRef.current?.srcObject) {
+      const stream = localVideoRef.current.srcObject as MediaStream;
+      stream.getAudioTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsMuted(!isMuted);
+    }
   };
 
   const handleVideoToggle = () => {
-    setIsVideoOff(!isVideoOff);
-    // Add actual video toggle logic here
+    if (localVideoRef.current?.srcObject) {
+      const stream = localVideoRef.current.srcObject as MediaStream;
+      stream.getVideoTracks().forEach(track => {
+        track.enabled = !track.enabled;
+      });
+      setIsVideoOff(!isVideoOff);
+    }
   };
 
-  return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-50 flex items-center justify-center p-4">
-      {/* Animated background particles */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400 rounded-full opacity-20 animate-pulse"></div>
-        <div className="absolute top-3/4 right-1/3 w-1 h-1 bg-purple-400 rounded-full opacity-30 animate-bounce"></div>
-        <div className="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-cyan-400 rounded-full opacity-25 animate-ping"></div>
-      </div>
+  const ParticleBackground = () => (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Animated gradient orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-r from-blue-500/10 to-purple-600/10 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-gradient-to-r from-cyan-500/10 to-blue-600/10 rounded-full blur-3xl animate-float-reverse"></div>
+      <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-gradient-to-r from-purple-500/10 to-pink-600/10 rounded-full blur-3xl animate-pulse-slow"></div>
+      
+      {/* Floating particles */}
+      {[...Array(20)].map((_, i) => (
+        <div
+          key={i}
+          className="absolute w-1 h-1 bg-white/30 rounded-full animate-float"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 5}s`,
+            animationDuration: `${15 + Math.random() * 10}s`
+          }}
+        />
+      ))}
+    </div>
+  );
 
-      <div className="relative w-full max-w-7xl h-full flex flex-col backdrop-blur-sm bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
-        
-        {/* Header with call info */}
-        <div className="absolute top-6 left-6 right-6 z-10 flex justify-between items-center">
-          <div className="bg-black/40 backdrop-blur-md text-white px-4 py-3 rounded-2xl border border-white/10">
-            <div className="flex items-center space-x-3">
-              <div className={`w-3 h-3 rounded-full ${isCallActive ? 'bg-green-400 animate-pulse' : 'bg-yellow-400 animate-pulse'}`}></div>
-              <span className="font-medium">
-                {callType === 'video' ? '📹 Video Call' : '🎙️ Audio Call'}
-              </span>
-              <span className="text-sm opacity-80">
-                {isCallActive ? 'Connected' : 'Connecting...'}
-              </span>
+  const ConnectionQuality = () => (
+    <div className="absolute top-6 right-6 z-10">
+      <div className="bg-black/40 backdrop-blur-xl text-white px-4 py-3 rounded-2xl border border-white/10 shadow-2xl">
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <div className="flex space-x-1">
+              <div className="w-1 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <div className="w-1 h-4 bg-green-400 rounded-full animate-pulse" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-1 h-5 bg-green-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-1 h-4 bg-green-400/50 rounded-full"></div>
+              <div className="w-1 h-3 bg-green-400/30 rounded-full"></div>
             </div>
+            <span className="text-sm font-medium text-green-400">Excellent</span>
           </div>
-          
-          {isCallActive && (
-            <div className="bg-black/40 backdrop-blur-md text-white px-4 py-3 rounded-2xl border border-white/10">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-                <span className="font-mono text-sm">{formatTime(callDuration)}</span>
-              </div>
-            </div>
-          )}
+          <div className="w-1 h-1 bg-white/40 rounded-full"></div>
+          <div className="text-sm font-mono">{formatTime(callDuration)}</div>
         </div>
+      </div>
+    </div>
+  );
 
-        {/* Main Video/Audio Area */}
-        <div className="flex-1 relative rounded-2xl overflow-hidden m-4 mt-20 mb-24">
-          {/* Remote Video/Audio */}
-          <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl relative overflow-hidden">
-            {callType === 'video' ? (
-              <>
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  className={`w-full h-full object-cover transition-all duration-500 ${isCallActive ? 'scale-100 opacity-100' : 'scale-105 opacity-70'}`}
-                />
-                {!isCallActive && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse shadow-2xl">
-                        <span className="text-4xl">👤</span>
-                      </div>
-                      <div className="text-2xl font-light mb-2">Connecting...</div>
-                      <div className="flex justify-center space-x-1">
-                        <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
+  const CallHeader = () => (
+    <div className="absolute top-4 left-4 z-10 md:top-6 md:left-6">
+      <div className="bg-black/40 backdrop-blur-xl text-white px-3 py-2 md:px-4 md:py-3 rounded-2xl border border-white/10 shadow-2xl">
+        <div className="flex items-center space-x-2 md:space-x-3">
+          <div className={`w-2.5 h-2.5 md:w-3 md:h-3 rounded-full ${
+            isCallActive 
+              ? 'bg-green-400 shadow-lg shadow-green-400/50 animate-pulse' 
+              : 'bg-yellow-400 shadow-lg shadow-yellow-400/50 animate-ping'
+          }`}></div>
+          <div className="flex items-center space-x-1 md:space-x-2">
+            <span className="text-lg md:text-xl">
+              {callType === 'video' ? '📹' : '🎙️'}
+            </span>
+            <span className="font-medium text-sm md:text-base">
+              {callType === 'video' ? 'Video Call' : 'Audio Call'}
+            </span>
+          </div>
+          <div className="w-1 h-1 bg-white/40 rounded-full"></div>
+          <span className={`text-xs md:text-sm ${isCallActive ? 'text-green-400' : 'text-yellow-400'}`}>
+            {isCallActive ? 'Connected' : 'Connecting...'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const MainVideoArea = () => (
+    <div className="flex-1 relative rounded-2xl md:rounded-3xl overflow-hidden m-2 md:m-4 mt-16 md:mt-20 mb-24 md:mb-28">
+      <div className="w-full h-full bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 rounded-2xl md:rounded-3xl relative overflow-hidden border border-white/10 shadow-2xl">
+        {callType === 'video' ? (
+          <>
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover transition-all duration-1000 ${
+                isCallActive ? 'scale-100 opacity-100' : 'scale-110 opacity-60 blur-sm'
+              }`}
+            />
+            {!isCallActive && (
+              <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-white text-center">
-                  <div className="w-32 h-32 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                    <span className="text-5xl">🎤</span>
-                  </div>
-                  <div className="text-3xl font-light mb-4">
-                    {isCallActive ? 'Audio Call Active' : 'Connecting Audio...'}
-                  </div>
-                  {isCallActive ? (
-                    <div className="flex justify-center space-x-1">
-                      <div className="w-1 h-8 bg-green-400 rounded-full animate-wave" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-1 h-6 bg-green-400 rounded-full animate-wave" style={{ animationDelay: '100ms' }}></div>
-                      <div className="w-1 h-10 bg-green-400 rounded-full animate-wave" style={{ animationDelay: '200ms' }}></div>
-                      <div className="w-1 h-7 bg-green-400 rounded-full animate-wave" style={{ animationDelay: '300ms' }}></div>
-                      <div className="w-1 h-9 bg-green-400 rounded-full animate-wave" style={{ animationDelay: '400ms' }}></div>
+                  <div className="relative">
+                    <div className="w-24 h-24 md:w-32 md:h-32 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-2xl animate-pulse">
+                      <span className="text-4xl md:text-5xl">👤</span>
                     </div>
-                  ) : (
-                    <div className="text-lg opacity-80">Please wait...</div>
-                  )}
+                    <div className="absolute -inset-4 bg-blue-500/20 rounded-full blur-xl animate-ping-slow"></div>
+                  </div>
+                  <div className="text-lg md:text-2xl font-light mb-3 md:mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                    Connecting to user...
+                  </div>
+                  <div className="flex justify-center space-x-1 md:space-x-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white rounded-full animate-bounce"
+                        style={{ animationDelay: `${i * 0.2}s` }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Local Video PiP */}
-          {callType === 'video' && (
-            <div className={`absolute bottom-6 right-6 w-64 h-48 bg-gray-900 rounded-2xl border-2 border-white/20 shadow-2xl overflow-hidden transition-all duration-300 hover:scale-105 hover:border-white/40 ${isVideoOff ? 'opacity-50' : 'opacity-100'}`}>
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-              />
-              {isVideoOff && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <span className="text-white text-lg">Camera Off</span>
+          </>
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <div className="text-white text-center">
+              <div className="relative mb-6 md:mb-8">
+                <div className="w-28 h-28 md:w-40 md:h-40 bg-gradient-to-br from-green-500 to-blue-600 rounded-full flex items-center justify-center mx-auto shadow-2xl">
+                  <span className="text-5xl md:text-6xl">🎤</span>
                 </div>
+                <div className="absolute -inset-4 md:-inset-6 bg-green-500/20 rounded-full blur-2xl animate-pulse-slow"></div>
+              </div>
+              <div className="text-xl md:text-3xl font-light mb-4 md:mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                {isCallActive ? 'Audio Call Active' : 'Connecting Audio...'}
+              </div>
+              {isCallActive ? (
+                <div className="flex justify-center space-x-1">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-6 md:w-2 md:h-8 bg-gradient-to-t from-green-400 to-cyan-400 rounded-full animate-wave"
+                      style={{
+                        animationDelay: `${i * 0.1}s`,
+                        height: `${6 + Math.random() * 10}px`
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm md:text-lg opacity-80 animate-pulse">Establishing connection...</div>
               )}
-              <div className="absolute top-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                You
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Enhanced Call Controls */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex justify-center space-x-8">
-          {/* Mute Toggle */}
-          <button
-            onClick={handleMuteToggle}
-            className={`flex flex-col items-center space-y-2 transition-all duration-300 ${
-              isMuted ? 'text-red-400' : 'text-white'
-            }`}
-          >
-            <div className={`p-4 rounded-2xl backdrop-blur-md border transition-all duration-300 ${
-              isMuted 
-                ? 'bg-red-500/20 border-red-400/30 shadow-lg shadow-red-500/20' 
-                : 'bg-white/10 border-white/20 hover:bg-white/20 hover:scale-110'
-            }`}>
-              <span className="text-2xl">
-                {isMuted ? '🎤' : '🎤'}
-              </span>
-            </div>
-            <span className="text-sm font-medium">{isMuted ? 'Unmute' : 'Mute'}</span>
-          </button>
-
-          {/* Video Toggle (only for video calls) */}
-          {callType === 'video' && (
-            <button
-              onClick={handleVideoToggle}
-              className={`flex flex-col items-center space-y-2 transition-all duration-300 ${
-                isVideoOff ? 'text-red-400' : 'text-white'
-              }`}
-            >
-              <div className={`p-4 rounded-2xl backdrop-blur-md border transition-all duration-300 ${
-                isVideoOff 
-                  ? 'bg-red-500/20 border-red-400/30 shadow-lg shadow-red-500/20' 
-                  : 'bg-white/10 border-white/20 hover:bg-white/20 hover:scale-110'
-              }`}>
-                <span className="text-2xl">
-                  {isVideoOff ? '📹' : '📹'}
-                </span>
-              </div>
-              <span className="text-sm font-medium">{isVideoOff ? 'Camera On' : 'Camera Off'}</span>
-            </button>
-          )}
-
-          {/* End Call Button */}
-          <button
-            onClick={onEndCall}
-            className="flex flex-col items-center space-y-2 group"
-          >
-            <div className="p-5 bg-red-500 rounded-2xl backdrop-blur-md border border-red-400/30 shadow-2xl shadow-red-500/30 transition-all duration-300 hover:scale-110 hover:bg-red-600 hover:shadow-red-500/50 active:scale-95">
-              <span className="text-2xl">📞</span>
-            </div>
-            <span className="text-sm font-medium text-red-400 group-hover:text-red-300 transition-colors">
-              End Call
-            </span>
-          </button>
-        </div>
-
-        {/* Connection Quality Indicator */}
-        {isCallActive && (
-          <div className="absolute bottom-6 right-6 bg-black/40 backdrop-blur-md text-white px-4 py-2 rounded-2xl border border-white/10">
-            <div className="flex items-center space-x-2">
-              <div className="flex space-x-1">
-                <div className="w-1 h-3 bg-green-400 rounded-full"></div>
-                <div className="w-1 h-4 bg-green-400 rounded-full"></div>
-                <div className="w-1 h-5 bg-green-400 rounded-full"></div>
-                <div className="w-1 h-3 bg-gray-400 rounded-full"></div>
-                <div className="w-1 h-2 bg-gray-400 rounded-full"></div>
-              </div>
-              <span className="text-sm">Good</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Add custom animations */}
-      <style>{`
-        @keyframes wave {
-          0%, 100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1.5); }
-        }
-        .animate-wave {
-          animation: wave 1s ease-in-out infinite;
-        }
-      `}</style>
+      {/* Local Video PiP */}
+      {callType === 'video' && (
+        <div
+          className={`absolute bottom-4 right-4 w-40 h-24 md:bottom-6 md:right-6 md:w-72 md:h-48 bg-gray-900 rounded-xl md:rounded-2xl border-2 ${
+            isVideoOff ? 'border-red-400/50' : 'border-white/20'
+          } shadow-2xl overflow-hidden transition-all duration-500 hover:scale-105 hover:border-white/40 backdrop-blur-sm`}
+        >
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover"
+          />
+          {isVideoOff && (
+            <div className="absolute inset-0 bg-black/70 flex items-center justify-center backdrop-blur-sm">
+              <div className="text-center">
+                <div className="text-xl md:text-2xl mb-1 md:mb-2">📹</div>
+                <div className="text-white font-medium">Camera Off</div>
+              </div>
+            </div>
+          )}
+          <div className="absolute top-2 right-2 md:top-3 md:right-3 bg-black/60 text-white text-xs px-2 py-0.5 md:px-3 md:py-1 rounded-full backdrop-blur-sm border border-white/20">
+            You
+          </div>
+          <div className="absolute top-2 left-2 md:top-3 md:left-3 flex space-x-1">
+            {isMuted && (
+              <div className="bg-red-500/80 text-white text-xs px-2 py-0.5 md:px-2 md:py-1 rounded-full backdrop-blur-sm">
+                🔇 Muted
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const CallControls = () => (
+    <div className="absolute bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 flex justify-center space-x-4 md:space-x-8">
+      {/* Mute Toggle */}
+      <div className="flex flex-col items-center space-y-2 md:space-y-3">
+        <button
+          onClick={handleMuteToggle}
+          className={`relative p-4 md:p-5 rounded-xl md:rounded-2xl backdrop-blur-xl border-2 transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+            isMuted
+              ? 'bg-red-500/20 border-red-400/50 shadow-lg shadow-red-500/30'
+              : 'bg-white/10 border-white/30 hover:bg-white/20 hover:shadow-2xl hover:shadow-white/20'
+          }`}
+        >
+          <span className="text-xl md:text-2xl block transform transition-transform duration-300 hover:scale-125">
+            {isMuted ? '🔇' : '🎤'}
+          </span>
+          {!isMuted && (
+            <div className="absolute -inset-1 bg-green-500/20 rounded-xl md:rounded-2xl blur-sm animate-pulse"></div>
+          )}
+        </button>
+        <span className={`text-xs md:text-sm font-medium px-2 md:px-3 py-0.5 md:py-1 rounded-full backdrop-blur-sm ${
+          isMuted ? 'text-red-400 bg-red-500/20' : 'text-white bg-white/10'
+        }`}>
+          {isMuted ? 'Muted' : 'Mute'}
+        </span>
+      </div>
+
+      {/* Video Toggle */}
+      {callType === 'video' && (
+        <div className="flex flex-col items-center space-y-2 md:space-y-3">
+          <button
+            onClick={handleVideoToggle}
+            className={`relative p-4 md:p-5 rounded-xl md:rounded-2xl backdrop-blur-xl border-2 transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+              isVideoOff
+                ? 'bg-red-500/20 border-red-400/50 shadow-lg shadow-red-500/30'
+                : 'bg-white/10 border-white/30 hover:bg-white/20 hover:shadow-2xl hover:shadow-white/20'
+            }`}
+          >
+            <span className="text-xl md:text-2xl block transform transition-transform duration-300 hover:scale-125">
+              {isVideoOff ? '📹' : '📹'}
+            </span>
+            {!isVideoOff && (
+              <div className="absolute -inset-1 bg-blue-500/20 rounded-xl md:rounded-2xl blur-sm animate-pulse"></div>
+            )}
+          </button>
+          <span className={`text-xs md:text-sm font-medium px-2 md:px-3 py-0.5 md:py-1 rounded-full backdrop-blur-sm ${
+            isVideoOff ? 'text-red-400 bg-red-500/20' : 'text-white bg-white/10'
+          }`}>
+            {isVideoOff ? 'Camera Off' : 'Camera On'}
+          </span>
+        </div>
+      )}
+
+      {/* End Call Button */}
+      <div className="flex flex-col items-center space-y-2 md:space-y-3">
+        <button
+          onClick={onEndCall}
+          className="relative p-5 md:p-6 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl md:rounded-2xl backdrop-blur-xl border-2 border-red-400/50 shadow-2xl shadow-red-500/40 transition-all duration-300 transform hover:scale-110 hover:shadow-red-500/60 active:scale-95 group"
+        >
+          <span className="text-xl md:text-2xl block transform transition-transform duration-300 group-hover:scale-125 group-hover:rotate-90">
+            📞
+          </span>
+          <div className="absolute -inset-2 bg-red-500/30 rounded-xl md:rounded-2xl blur-lg group-hover:blur-xl transition-all duration-300"></div>
+        </button>
+        <span className="text-xs md:text-sm font-medium text-red-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full backdrop-blur-sm bg-red-500/20">
+          End Call
+        </span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div 
+      className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-50 flex items-center justify-center p-2 md:p-4"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
+      <ParticleBackground />
+      
+      <div className="relative w-full max-w-4xl md:max-w-7xl h-full flex flex-col backdrop-blur-sm bg-white/5 rounded-xl md:rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <CallHeader />
+        <ConnectionQuality />
+        <MainVideoArea />
+        <CallControls />
+      </div>
     </div>
   );
 };
