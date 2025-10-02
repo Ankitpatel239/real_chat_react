@@ -5,7 +5,7 @@ import ChatMessages from './ChatMessages';
 import UserList from './UserList';
 import CallInterface from './CallInterface';
 import CallHistory from './CallHistory';
-import type { RoomState, Message, User, CallData, TypingUser } from '../types';
+import type { RoomState, Message, User, TypingUser } from '../types';
 
 interface ChatRoomProps {
   roomState: RoomState;
@@ -200,6 +200,13 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ roomState, onLeaveRoom }) => {
         const s = new MediaStream();
         event.track && s.addTrack(event.track);
         setRemoteStream(s);
+      }
+
+      // Ensure audio is played for audio-only calls
+      if (event.track.kind === 'audio') {
+        const audioElement = new Audio();
+        audioElement.srcObject = new MediaStream([event.track]);
+        audioElement.play().catch((err) => console.error('Error playing audio:', err));
       }
       setIsCallActive(true);
     };
