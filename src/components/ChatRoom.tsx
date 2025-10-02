@@ -410,7 +410,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ roomState, onLeaveRoom }) => {
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 h-full lg:h-auto">
           <ChatMessages messages={messages} currentUser={roomState.username} typingUsers={typingUsers} />
-          <div ref={messagesEndRef} />
+          {/* <div ref={messagesEndRef}  className='h-0 '/>   */}
 
           <form onSubmit={sendMessage} className="p-4 border-t border-gray-200" style={{ position: 'sticky', bottom: 0 }}>
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
@@ -418,7 +418,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ roomState, onLeaveRoom }) => {
                 onChange={(e) => { setNewMessage(e.target.value); handleTypingStart(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleTypingStop(); }}
                 placeholder="Type your message..."
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 disabled={isLoading} autoFocus />
               <button type="submit" disabled={isLoading || !newMessage.trim()}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50">
